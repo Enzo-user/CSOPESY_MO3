@@ -1,0 +1,22 @@
+# Build output
+build/
+out/
+cmake-build-*/
+Release/
+Debug/
+x64/
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+CMakeUserPresets.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs from measurement runs
+*.log

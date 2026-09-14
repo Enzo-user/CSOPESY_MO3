@@ -1,0 +1,13 @@
+# CSOPESY MO3 - Marquee Console startup configuration.
+# Format: <key> <value>   (space-separated, one per line, '#' starts a comment)
+# Every value can also be changed at runtime, so nothing here needs a rebuild.
+#
+#   text      Initial marquee text (the rest of the line, spaces allowed).
+#   speed_ms  Marquee refresh interval in milliseconds      [1, 10000]
+#   poll_ms   Keyboard polling interval in milliseconds     [1, 1000]
+#   width     Marquee width in columns; 0 = follow the terminal width.
+
+text      Welcome to CSOPESY! This is the marquee console.
+speed_ms  100
+poll_ms   15
+width     0
