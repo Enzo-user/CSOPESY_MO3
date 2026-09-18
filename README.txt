@@ -4,8 +4,10 @@ CSOPESY - Marquee Project: Command Line Interface Exercise
 
 GROUP DEVELOPER
 ---------------
-De La Cruz, Juan
-Santos, Alex
+Eleydo, Renzel Vince
+Martin, Sean
+Obcena, Hans Gabriel
+Suerte, Lorenzo
 
 Version date: 2026-09-18
 
