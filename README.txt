@@ -11,6 +11,8 @@ Suerte, Lorenzo
 
 Version date: 2026-09-18
 
+Workload contribution is documented in CONTRIBUTIONS.md.
+
 
 ENTRY POINT
 -----------

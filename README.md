@@ -12,6 +12,8 @@ standard C++ input/output streams (`std::cin`, `std::cout`).
 
 **Version date:** 2026-09-18
 
+Workload contribution is documented in [CONTRIBUTIONS.md](CONTRIBUTIONS.md).
+
 ## Entry Point
 
 | | |
