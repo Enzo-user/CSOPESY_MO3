@@ -1,17 +1,17 @@
 # Workload Contribution
 
 **Project:** CSOPESY — Marquee Project: Command Line Interface Exercise
-**Version date:** 2026-09-18
+**Version date:** 2026-09-21
 
-The following is the group's agreed division of work for this exercise. The work
-was split into four equal shares of 25%, one per member.
+The following is the group's agreed division of work. The work was split into
+four equal shares of 25%, one per member.
 
 | Member | Focus area | Share |
 |---|---|---|
 | Eleydo, Renzel Vince | Console UI and program scaffolding | 25% |
-| Martin, Sean | Command interpreter and input parsing | 25% |
+| Cordero, Ramuel Sean | Command interpreter and input parsing | 25% |
 | Obcena, Hans Gabriel | Required command implementations | 25% |
-| Suerte, Lorenzo | Out-of-scope commands, error handling and edge cases | 25% |
+| Suerte, Lorenzo Enrique | Marquee commands, error handling and edge cases | 25% |
 
 ## Eleydo, Renzel Vince — Console UI and program scaffolding
 
@@ -19,10 +19,11 @@ was split into four equal shares of 25%, one per member.
   the version date, matching the layout in the specification's sample output.
 - Overall program structure of `main.cpp`: includes, helper function layout and
   the `main()` entry point.
-- The console loop that continuously redisplays the `Command>` prompt and keeps
-  the blank-line spacing between prompts consistent with the sample output.
+- The fixed screen layout drawn with ANSI cursor positioning: the marquee rows,
+  the header, the `Command>` prompt row and the output area that is cleared
+  before each command's result.
 
-## Martin, Sean — Command interpreter and input parsing
+## Cordero, Ramuel Sean — Command interpreter and input parsing
 
 - Reading a full line of user input so text containing spaces survives intact.
 - Trimming leading and trailing whitespace, including carriage returns, so input
@@ -36,19 +37,36 @@ was split into four equal shares of 25%, one per member.
 
 - `help` — the full six-command listing and descriptions, reproduced to match the
   specification's sample output exactly.
-- `set_text` — saving the parsed text in memory and printing the
-  `Text saved for marquee:` confirmation.
-- `exit` — printing `Terminating console...` and terminating the console loop.
+- `set_text` — saving the parsed text in memory as the marquee text and printing
+  the `Text saved for marquee:` confirmation.
+- `exit` — printing `Terminating console...`, stopping the animation thread and
+  terminating the console loop.
 
-## Suerte, Lorenzo — Out-of-scope commands, error handling and edge cases
+## Suerte, Lorenzo Enrique — Marquee commands, error handling and edge cases
 
-- `start_marquee`, `stop_marquee` and `set_speed`: listed by `help` because they
-  appear in the sample output, but reported as not required for this exercise,
-  whether or not text follows the command.
+- `start_marquee`, `stop_marquee` and `set_speed`: wiring the commands to the
+  marquee (starting and stopping the animation, clearing the marquee rows,
+  validating and applying the refresh interval) and their confirmation messages.
 - Unrecognized command handling: printing an error message and returning the user
   to the `Command>` prompt.
-- Edge cases: `set_text` with no text supplied, empty input lines, and clean
-  termination when the input stream ends.
+- Edge cases: `set_text` with no text supplied, `set_speed` with a missing or
+  invalid value, empty input lines, and text typed after commands that take no
+  argument.
+
+## Marquee animation prototype
+
+The marquee engine that `main.cpp` is built around was contributed by a group
+member as a standalone prototype, `marquee.cpp`, together with the `ascii_big.txt`
+font. The prototype is preserved in the repository history. It provided:
+
+- The 8-row ASCII font file and the loader that reads one glyph per printable
+  character and crops each glyph to its real width.
+- The animation thread that stitches the glyphs of the saved text and redraws
+  the top eight rows of the console every refresh interval.
+- The keyboard-polling input loop (`_kbhit` / `_getch`) that lets the user type
+  commands while the marquee keeps animating.
+
+Prototype contributor: _(to be filled in by the group)_
 
 ## Shared responsibilities
 
