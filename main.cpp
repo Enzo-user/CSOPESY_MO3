@@ -1,4 +1,4 @@
-// CSOPESY - Marquee Project: Command Line Interface Exercise
+// CSOPESY MO3 - Marquee Console
 // Main menu console with a command interpreter and a live text marquee.
 //
 // The console behaves like the reference sample: the welcome header is printed
@@ -348,16 +348,18 @@ void marquee_thread_main() {
 
 // ---- Console text -------------------------------------------------------
 
-// The welcome header with the dummy group developer and version date text.
+// The welcome header with the group developers and the version date.
 std::vector<std::string> header_lines() {
     std::vector<std::string> lines;
     lines.push_back("Welcome to CSOPESY!");
     lines.push_back("");
     lines.push_back("Group developer:");
-    lines.push_back("De La Cruz, Juan");
-    lines.push_back("Santos, Alex");
+    lines.push_back("Obcena, Hans Gabriel");
+    lines.push_back("Suerte, Lorenzo Enrique");
+    lines.push_back("Cordero, Ramuel Sean");
+    lines.push_back("Eleydo, Renzel Vince");
     lines.push_back("");
-    lines.push_back("Version date: 2026-09-18");
+    lines.push_back("Version date: 2026-09-21");
     return lines;
 }
 

@@ -1,9 +1,10 @@
 ================================================================================
-CSOPESY - Marquee Project: Command Line Interface Exercise
+CSOPESY MO3 - Marquee Console
 ================================================================================
 
-A single-file C++ main menu console with a command interpreter and a live
-ASCII-art text marquee, built for the Windows console.
+Semi-Major Output 1 for CSOPESY (DLSU, Term 1 AY 2026-2027): a single-file
+C++ main menu console with a command interpreter and a live ASCII-art text
+marquee, built for the Windows console.
 
 
 GROUP DEVELOPER
@@ -17,10 +18,8 @@ Version date: 2026-09-21
 
 Workload contribution is documented in CONTRIBUTIONS.md.
 
-The program's welcome header prints the dummy "Group developer:" and
-"Version date:" text from the exercise's sample output (De La Cruz, Juan;
-Santos, Alex; 2026-09-18), as the exercise asks. The actual group members
-are the ones listed above.
+The program's welcome header prints the same four names under
+"Group developer:" and the same version date.
 
 
 ENTRY POINT

@@ -8,10 +8,10 @@ result. The same sequence is what the automated console harness checks.
 
 | # | Type | Expect |
 |---|---|---|
-| 1 | *(nothing)* | The welcome header exactly as in the specification sample (`Welcome to CSOPESY!`, `Group developer:` with the two dummy names, `Version date: 2026-09-18`), a blank line, then `Command> `. Nothing else on screen. |
+| 1 | *(nothing)* | The welcome header in the specification's layout (`Welcome to CSOPESY!`, `Group developer:` with the four members, `Version date: 2026-09-21`), a blank line, then `Command> `. Nothing else on screen. |
 | 2 | `hel` (no Enter) | The characters appear after the prompt. Backspace removes one; arrow and function keys do nothing. |
 | 3 | `p` + Enter | `Command> help` followed by the six help lines, word for word as in the sample, then a blank line and a new prompt. |
-| 4 | `set_text Operating Systems are fun!` | `Text saved for marquee: Operating Systems are fun!` The screen now matches the sample transcript line for line. |
+| 4 | `set_text Operating Systems are fun!` | `Text saved for marquee: Operating Systems are fun!` The screen now matches the sample transcript line for line, apart from the names and date in the header. |
 | 5 | `start_marquee` | `Marquee animation started.` The text scrolls left in the big ASCII font in the bottom eight rows of the window while the transcript above stays put. |
 | 6 | `hel` (no Enter), wait, `p` + Enter | Typing echoes normally while the marquee keeps moving; `help` output appears and the transcript scrolls inside its region, never over the marquee. |
 | 7 | `set_speed 50` | `Marquee speed set to 50 milliseconds.` and the marquee visibly speeds up at once. |

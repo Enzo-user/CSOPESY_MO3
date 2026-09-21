@@ -1,14 +1,14 @@
-# CLAUDE.md — Marquee Project: Command Line Interface Exercise
+# CLAUDE.md — CSOPESY MO3: Marquee Console
 
 ## Goal
 
-Implement **only** the requirements below. Add nothing that is not listed here: no extra commands, features, files, libraries, or refactors.
+Implement **only** the requirements below. Add nothing that is not listed here: no extra commands, features, files, libraries, or refactors. This repository is the MO3 (Semi-Major Output 1, Marquee Console) submission, due 2026-09-23.
 
 ## Requirements
 
 Develop a C++ program that acts as the main menu console, using standard C++ output streams (`std::cout`) for display.
 
-1. Display a welcome header that includes dummy text for **"Group developer:"** and **"Version date:"**.
+1. Display a welcome header with **"Group developer:"** (the four group members) and **"Version date:"**.
 2. Continuously display the prompt `Command>` and wait for user input.
 3. Implement a command interpreter that accepts and safely processes the following inputs using `std::string` comparisons:
    - `help` — displays the commands and their descriptions.
@@ -19,7 +19,7 @@ Develop a C++ program that acts as the main menu console, using standard C++ out
 
 ## Reference output
 
-Match this sample for the header, `help`, `set_text`, and `exit`:
+Match this sample's layout for the header and its text exactly for `help`, `set_text`, and `exit` (the sample's names and date are placeholders; the program prints the real ones):
 
 ```
 Welcome to CSOPESY!
@@ -45,7 +45,7 @@ Command> exit
 Terminating console...
 ```
 
-The header prints exactly the dummy names and date shown in the sample. The actual group members and the documentation's version date are listed in `README.md`, `README.txt`, and `CONTRIBUTIONS.md`; keep those three files in sync with each other.
+The header lists the four group members in the sample's `Last name, First name` format (Obcena, Hans Gabriel; Suerte, Lorenzo Enrique; Cordero, Ramuel Sean; Eleydo, Renzel Vince) and the version date. Keep the names and the date in sync across `main.cpp`, `README.md`, `README.txt`, and `CONTRIBUTIONS.md`.
 
 ## Scope rules
 

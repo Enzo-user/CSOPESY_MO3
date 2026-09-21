@@ -1,6 +1,6 @@
 # Workload Contribution
 
-**Project:** CSOPESY — Marquee Project: Command Line Interface Exercise
+**Project:** CSOPESY MO3 — Marquee Console
 **Version date:** 2026-09-21
 
 The following is the group's agreed division of work. The work was split into
@@ -30,8 +30,8 @@ prototype is preserved unchanged in the repository history. It provided:
 
 ## Obcena, Hans Gabriel — Console UI and program scaffolding
 
-- Welcome header: the `Welcome to CSOPESY!` banner and the dummy group developer
-  list and version date, matching the specification's sample output.
+- Welcome header: the `Welcome to CSOPESY!` banner, the group developer list and
+  the version date, in the layout of the specification's sample output.
 - Overall program structure of `main.cpp`: includes, helper function layout and
   the `main()` entry point.
 - The screen layout: the console transcript scrolls inside an ANSI scrolling
