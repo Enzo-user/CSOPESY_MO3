@@ -8,12 +8,27 @@ four equal shares of 25%, one per member.
 
 | Member | Focus area | Share |
 |---|---|---|
-| Eleydo, Renzel Vince | Console UI and program scaffolding | 25% |
-| Cordero, Ramuel Sean | Command interpreter and input parsing | 25% |
-| Obcena, Hans Gabriel | Required command implementations | 25% |
-| Suerte, Lorenzo Enrique | Marquee commands, error handling and edge cases | 25% |
+| Cordero, Ramuel Sean | Marquee engine: ASCII font and animation prototype | 25% |
+| Obcena, Hans Gabriel | Console UI and program scaffolding | 25% |
+| Suerte, Lorenzo Enrique | Command interpreter and input parsing | 25% |
+| Eleydo, Renzel Vince | Command implementations, error handling and edge cases | 25% |
 
-## Eleydo, Renzel Vince — Console UI and program scaffolding
+## Cordero, Ramuel Sean — Marquee engine: ASCII font and animation prototype
+
+The marquee engine that `main.cpp` is built around was contributed as the
+standalone prototype `marquee.cpp` together with the `ascii_big.txt` font. The
+prototype is preserved unchanged in the repository history. It provided:
+
+- The 8-row ASCII font file (`ascii_big.txt`, one glyph per printable character
+  from `!` to `~`) and the loader that reads each glyph and crops it to its real
+  width plus one column of kerning.
+- The animation thread that stitches the glyphs of the saved text side by side
+  and redraws the marquee rows every refresh interval, scrolling the text one
+  column to the left per frame.
+- The keyboard-polling input loop (`_kbhit` / `_getch`) that lets the user keep
+  typing commands while the marquee animates.
+
+## Obcena, Hans Gabriel — Console UI and program scaffolding
 
 - Welcome header: the `Welcome to CSOPESY!` banner and the dummy group developer
   list and version date, matching the specification's sample output.
@@ -23,7 +38,7 @@ four equal shares of 25%, one per member.
   region exactly like the sample output, while the marquee owns the bottom eight
   rows of the window.
 
-## Cordero, Ramuel Sean — Command interpreter and input parsing
+## Suerte, Lorenzo Enrique — Command interpreter and input parsing
 
 - Reading a full line of user input so text containing spaces survives intact.
 - Trimming leading and trailing whitespace, including carriage returns, so input
@@ -33,40 +48,22 @@ four equal shares of 25%, one per member.
   line.
 - Dispatching the parsed command through `std::string` comparisons.
 
-## Obcena, Hans Gabriel — Required command implementations
+## Eleydo, Renzel Vince — Command implementations, error handling and edge cases
 
 - `help` — the full six-command listing and descriptions, reproduced to match the
   specification's sample output exactly.
 - `set_text` — saving the parsed text in memory as the marquee text and printing
   the `Text saved for marquee:` confirmation.
+- `start_marquee`, `stop_marquee` and `set_speed`: wiring the commands to the
+  marquee engine (starting and stopping the animation, clearing the marquee rows,
+  validating and applying the refresh interval) and their confirmation messages.
 - `exit` — printing `Terminating console...`, stopping the animation thread and
   terminating the console loop.
-
-## Suerte, Lorenzo Enrique — Marquee commands, error handling and edge cases
-
-- `start_marquee`, `stop_marquee` and `set_speed`: wiring the commands to the
-  marquee (starting and stopping the animation, clearing the marquee rows,
-  validating and applying the refresh interval) and their confirmation messages.
 - Unrecognized command handling: printing an error message and returning the user
   to the `Command>` prompt.
 - Edge cases: `set_text` with no text supplied, `set_speed` with a missing or
   invalid value, empty input lines, and text typed after commands that take no
   argument.
-
-## Marquee animation prototype
-
-The marquee engine that `main.cpp` is built around was contributed by a group
-member as a standalone prototype, `marquee.cpp`, together with the `ascii_big.txt`
-font. The prototype is preserved in the repository history. It provided:
-
-- The 8-row ASCII font file and the loader that reads one glyph per printable
-  character and crops each glyph to its real width.
-- The animation thread that stitches the glyphs of the saved text and redraws
-  the marquee rows of the console every refresh interval.
-- The keyboard-polling input loop (`_kbhit` / `_getch`) that lets the user type
-  commands while the marquee keeps animating.
-
-Prototype contributor: _(to be filled in by the group)_
 
 ## Shared responsibilities
 
