@@ -1,17 +1,13 @@
 // CSOPESY - Marquee Project: Command Line Interface Exercise
 // Main menu console with a command interpreter and a live text marquee.
 //
-// The marquee animation (the ASCII font loader, the animation thread and the
-// keyboard-polling input loop) was contributed by a group member as a
-// standalone prototype, marquee.cpp, and is integrated into this file.
-//
-// Screen layout (rows are 1-based; the console is driven with ANSI escapes):
-//   rows 1-8    marquee animation area (the font is 8 rows tall)
-//   row 10+     welcome header
-//   prompt row  "Command> " (redrawn on every keystroke)
-//   output row  the last command entered and its result
-// On a console window shorter than 28 rows the spacer rows between those
-// areas are dropped so the layout still fits.
+// The console behaves like the reference sample: the welcome header is printed
+// first, then every "Command>" prompt, the command typed and its output scroll
+// upwards as a transcript. The marquee animation (contributed by a group member
+// as the standalone prototype marquee.cpp and integrated here) is drawn in the
+// bottom eight rows of the window. An ANSI scrolling region keeps the
+// transcript above those rows, so the marquee keeps animating while commands
+// are typed.
 //
 // Windows only: <conio.h> provides non-blocking keyboard polling and
 // <windows.h> is used to enable ANSI escape sequences in the console.
@@ -36,13 +32,12 @@ namespace {
 
 // ---- Layout and timing --------------------------------------------------
 
-const int MARQUEE_ROWS = 8;        // rows 1..8 belong to the marquee
-const int HEADER_ROW = 10;         // first row of the welcome header (spacious layout)
-const int OUTPUT_LINES = 7;        // tallest output: the echoed command plus six help lines
+const int MARQUEE_ROWS = 8;        // the font is 8 rows tall
 const int INPUT_POLL_MS = 10;      // keyboard polling interval
 const int DEFAULT_SPEED_MS = 100;  // marquee refresh interval
 const long long MAX_SPEED_MS = 999999999; // largest value set_speed accepts
 const int FALLBACK_WIDTH = 99;     // marquee width if the console size is unknown
+const int FALLBACK_ROWS = 30;      // window height if the console size is unknown
 const char FONT_FILE[] = "ascii_big.txt";
 const std::string PROMPT = "Command> ";
 
@@ -62,6 +57,7 @@ std::atomic<bool> program_running(true);    // cleared by exit
 
 std::map<char, std::vector<std::string>> font_map; // read-only once loaded
 bool font_loaded = false;
+int marquee_top = 0; // first row of the marquee area; set before the thread starts
 
 // ---- Small helpers ------------------------------------------------------
 
@@ -103,7 +99,7 @@ int console_width() {
     return FALLBACK_WIDTH;
 }
 
-// Number of rows visible in the console window (a large value if unknown).
+// Number of rows visible in the console window.
 int console_rows() {
     CONSOLE_SCREEN_BUFFER_INFO info;
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -113,7 +109,7 @@ int console_rows() {
             return rows;
         }
     }
-    return 9999;
+    return FALLBACK_ROWS;
 }
 
 // Directory containing the running executable, with a trailing separator.
@@ -126,6 +122,15 @@ std::string exe_directory() {
     const std::string path(buffer, length);
     const std::string::size_type slash = path.find_last_of("\\/");
     return (slash == std::string::npos) ? "" : path.substr(0, slash + 1);
+}
+
+// If the program is interrupted (Ctrl+C, closing the window), give the
+// console its normal full-screen scrolling back.
+BOOL WINAPI on_console_ctrl(DWORD) {
+    HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD written = 0;
+    WriteConsoleA(out, "\033[s\033[r\033[u", 9, &written, NULL);
+    return FALSE; // the default handler then terminates the program
 }
 
 // ---- ASCII font ---------------------------------------------------------
@@ -208,9 +213,9 @@ std::vector<std::string> build_marquee_rows(const std::string &text) {
     return rows;
 }
 
-// Draws one frame: every row is the text repeated end to end, shifted left by
-// offset columns, cut to the console width. The cursor is saved and restored
-// so the command prompt is never disturbed.
+// Draws one frame in the marquee area: every row is the text repeated end to
+// end, shifted left by offset columns, cut to the console width. The cursor
+// is saved and restored so the transcript is never disturbed.
 void draw_marquee_frame(const std::vector<std::string> &rows, std::size_t offset) {
     const int width = console_width();
 
@@ -222,7 +227,7 @@ void draw_marquee_frame(const std::vector<std::string> &rows, std::size_t offset
         for (int i = 0; i < width; ++i) {
             window += pattern[(offset + static_cast<std::size_t>(i)) % pattern.size()];
         }
-        frame += move_to(static_cast<int>(r) + 1) + "\033[2K" + window;
+        frame += move_to(marquee_top + static_cast<int>(r)) + "\033[2K" + window;
     }
     frame += "\033[u";
 
@@ -233,11 +238,11 @@ void draw_marquee_frame(const std::vector<std::string> &rows, std::size_t offset
     std::cout << frame << std::flush;
 }
 
-// Blanks the marquee rows (used by stop_marquee).
+// Blanks the marquee area (used by stop_marquee and at exit).
 void clear_marquee_area() {
     std::string frame = "\033[s";
-    for (int r = 1; r <= MARQUEE_ROWS; ++r) {
-        frame += move_to(r) + "\033[2K";
+    for (int r = 0; r < MARQUEE_ROWS; ++r) {
+        frame += move_to(marquee_top + r) + "\033[2K";
     }
     frame += "\033[u";
 
@@ -279,18 +284,16 @@ void marquee_thread_main() {
 
 // ---- Console text -------------------------------------------------------
 
-// The welcome header with the group developers and version date.
+// The welcome header with the dummy group developer and version date text.
 std::vector<std::string> header_lines() {
     std::vector<std::string> lines;
     lines.push_back("Welcome to CSOPESY!");
     lines.push_back("");
     lines.push_back("Group developer:");
-    lines.push_back("Obcena, Hans Gabriel");
-    lines.push_back("Suerte, Lorenzo Enrique");
-    lines.push_back("Cordero, Ramuel Sean");
-    lines.push_back("Eleydo, Renzel Vince");
+    lines.push_back("De La Cruz, Juan");
+    lines.push_back("Santos, Alex");
     lines.push_back("");
-    lines.push_back("Version date: 2026-09-21");
+    lines.push_back("Version date: 2026-09-18");
     return lines;
 }
 
@@ -344,6 +347,10 @@ bool process_command(const std::string &input, std::string &output) {
         animation_on = true;
         frame_requested = true;
         output = "Marquee animation started.\n";
+        if (!font_loaded) {
+            output += std::string("Warning: ") + FONT_FILE +
+                      " was not found, so the marquee shows plain text.\n";
+        }
     } else if (command == "stop_marquee") {
         animation_on = false;
         clear_marquee_area();
@@ -380,9 +387,9 @@ bool process_command(const std::string &input, std::string &output) {
 
 // ---- Keyboard input -----------------------------------------------------
 
-// Redraws the prompt line. Only the tail of a line longer than the console
-// width is shown, so the prompt never wraps onto the rows below it.
-void redraw_prompt(int prompt_row, const std::string &input) {
+// Redraws the prompt line in place. Only the tail of a line longer than the
+// console width is shown, so the prompt never wraps onto another row.
+void redraw_prompt(const std::string &input) {
     int room = console_width() - static_cast<int>(PROMPT.size());
     if (room < 1) {
         room = 1;
@@ -392,15 +399,14 @@ void redraw_prompt(int prompt_row, const std::string &input) {
         (input.size() > visible) ? input.substr(input.size() - visible) : input;
 
     std::lock_guard<std::mutex> lock(console_mtx);
-    std::cout << move_to(prompt_row) << "\033[2K" << PROMPT << shown << std::flush;
+    std::cout << "\r\033[2K" << PROMPT << shown << std::flush;
 }
 
-// Polls the keyboard until Enter is pressed and returns the line typed.
-// Polling (instead of std::getline) keeps the marquee animating while the
-// user types.
-std::string read_command_line(int prompt_row) {
+// Polls the keyboard until Enter is pressed and returns the line typed. The
+// prompt itself has already been printed. Polling (instead of std::getline)
+// keeps the marquee animating while the user types.
+std::string read_command_line() {
     std::string input;
-    redraw_prompt(prompt_row, input);
 
     while (true) {
         if (!_kbhit()) {
@@ -410,6 +416,8 @@ std::string read_command_line(int prompt_row) {
 
         int key = _getch();
         if (key == '\r' || key == '\n') {
+            std::lock_guard<std::mutex> lock(console_mtx);
+            std::cout << "\n" << std::flush;
             return input;
         }
         if (key == 0 || key == 0xE0) {
@@ -424,15 +432,16 @@ std::string read_command_line(int prompt_row) {
             key = ' '; // a tab separates words like a space
         }
         if (key == '\b') {
-            if (!input.empty()) {
-                input.pop_back();
+            if (input.empty()) {
+                continue;
             }
+            input.pop_back();
         } else if (key >= 32 && key <= 126) {
             input += static_cast<char>(key);
         } else {
             continue; // other control keys are ignored
         }
-        redraw_prompt(prompt_row, input);
+        redraw_prompt(input);
     }
 }
 
@@ -440,36 +449,37 @@ std::string read_command_line(int prompt_row) {
 
 int main() {
     enable_virtual_terminal();
+    SetConsoleCtrlHandler(on_console_ctrl, TRUE);
     font_loaded = load_font();
 
-    // Spacious layout: a blank row after the marquee, after the header and
-    // after the prompt. If the window cannot fit that, drop the spacer rows.
-    const std::vector<std::string> header = header_lines();
-    const int header_rows = static_cast<int>(header.size());
-    const int spacious_rows = HEADER_ROW + header_rows + 2 + OUTPUT_LINES;
-    const bool compact = console_rows() < spacious_rows;
-    const int header_row = compact ? MARQUEE_ROWS + 1 : HEADER_ROW;
-    const int prompt_row = header_row + header_rows + (compact ? 0 : 1);
-    const int output_row = prompt_row + (compact ? 1 : 2);
+    // The transcript scrolls inside rows 1..region_bottom; the marquee owns
+    // the bottom MARQUEE_ROWS rows, with one blank row between them.
+    int region_bottom = console_rows() - MARQUEE_ROWS - 1;
+    if (region_bottom < 1) {
+        region_bottom = 1;
+    }
+    marquee_top = region_bottom + 2;
 
     std::thread animation(marquee_thread_main);
 
     {
         std::lock_guard<std::mutex> lock(console_mtx);
-        std::cout << "\033[2J" << move_to(header_row);
+        std::cout << "\033[2J" << "\033[1;" << region_bottom << "r" << move_to(1);
+        const std::vector<std::string> header = header_lines();
         for (std::size_t i = 0; i < header.size(); ++i) {
             std::cout << header[i] << "\n";
-        }
-        if (!font_loaded) {
-            std::cout << move_to(output_row) << "Warning: " << FONT_FILE
-                      << " was not found, so the marquee will show plain text.";
         }
         std::cout.flush();
     }
 
     bool running = true;
     while (running) {
-        const std::string input = trim(read_command_line(prompt_row));
+        {
+            std::lock_guard<std::mutex> lock(console_mtx);
+            std::cout << "\n" << PROMPT << std::flush;
+        }
+
+        const std::string input = trim(read_command_line());
         if (input.empty()) {
             continue; // nothing typed, show the prompt again
         }
@@ -477,18 +487,16 @@ int main() {
         std::string output;
         running = process_command(input, output);
 
-        // Echo the command above its output. The final newline is left out so
-        // the cursor never moves past the last row and scrolls the layout.
-        std::string text = PROMPT + input + "\n" + output;
-        if (!text.empty() && text[text.size() - 1] == '\n') {
-            text.erase(text.size() - 1);
-        }
-
         std::lock_guard<std::mutex> lock(console_mtx);
-        std::cout << move_to(output_row) << "\033[0J" << text << std::flush;
+        std::cout << output << std::flush;
     }
 
     program_running = false;
     animation.join();
+
+    // Leave the console as a normal scrolling window again.
+    clear_marquee_area();
+    std::lock_guard<std::mutex> lock(console_mtx);
+    std::cout << "\033[s\033[r\033[u" << std::flush;
     return 0;
 }

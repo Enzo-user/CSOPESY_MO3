@@ -15,13 +15,13 @@ four equal shares of 25%, one per member.
 
 ## Eleydo, Renzel Vince — Console UI and program scaffolding
 
-- Welcome header: the `Welcome to CSOPESY!` banner, the group developer list and
-  the version date, matching the layout in the specification's sample output.
+- Welcome header: the `Welcome to CSOPESY!` banner and the dummy group developer
+  list and version date, matching the specification's sample output.
 - Overall program structure of `main.cpp`: includes, helper function layout and
   the `main()` entry point.
-- The fixed screen layout drawn with ANSI cursor positioning: the marquee rows,
-  the header, the `Command>` prompt row and the output area that is cleared
-  before each command's result.
+- The screen layout: the console transcript scrolls inside an ANSI scrolling
+  region exactly like the sample output, while the marquee owns the bottom eight
+  rows of the window.
 
 ## Cordero, Ramuel Sean — Command interpreter and input parsing
 
@@ -62,7 +62,7 @@ font. The prototype is preserved in the repository history. It provided:
 - The 8-row ASCII font file and the loader that reads one glyph per printable
   character and crops each glyph to its real width.
 - The animation thread that stitches the glyphs of the saved text and redraws
-  the top eight rows of the console every refresh interval.
+  the marquee rows of the console every refresh interval.
 - The keyboard-polling input loop (`_kbhit` / `_getch`) that lets the user type
   commands while the marquee keeps animating.
 

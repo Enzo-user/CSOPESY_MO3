@@ -17,6 +17,11 @@ Version date: 2026-09-21
 
 Workload contribution is documented in CONTRIBUTIONS.md.
 
+The program's welcome header prints the dummy "Group developer:" and
+"Version date:" text from the exercise's sample output (De La Cruz, Juan;
+Santos, Alex; 2026-09-18), as the exercise asks. The actual group members
+are the ones listed above.
+
 
 ENTRY POINT
 -----------
@@ -66,31 +71,30 @@ next to the executable. If the font cannot be found, the console prints a
 warning and the marquee falls back to scrolling the text as a single plain
 row.
 
-Use a console window of at least 100 columns by 28 rows (the Windows default
-is 120 by 30): the marquee takes the top eight rows, the header and prompt sit
-below it, and the "help" output reaches row 28. On a window shorter than 28
-rows the blank spacer rows are dropped so everything still fits in 25 rows.
-The program needs Windows 10 or later with the standard console, which
-understands the ANSI escape sequences it uses.
+Use a console window of at least 100 columns by about 20 rows (the Windows
+default is 120 by 30): the marquee takes the bottom eight rows and the
+console transcript scrolls in the rows above them. The program needs Windows
+10 or later with the standard console, which understands the ANSI escape
+sequences it uses.
 
 
 SCREEN LAYOUT
 -------------
-The console is drawn with ANSI cursor positioning instead of scrolling, so the
-marquee can keep animating while commands are typed:
+The console prints a transcript exactly like the sample output: the welcome
+header first, then each "Command>" prompt, the command typed and its output,
+scrolling upwards as in any console. The bottom eight rows of the window are
+reserved for the marquee, with one blank row between. An ANSI scrolling
+region (ESC[1;Nr) confines the transcript to the rows above, so the marquee
+animates without disturbing the text, and the marquee thread saves and
+restores the cursor around each frame so typing is never interrupted.
 
-    Rows 1-8      Marquee animation area (the font is 8 rows tall)
-    Rows 10-18    Welcome header: "Welcome to CSOPESY!", "Group developer:"
-                  with the four names, "Version date:"
-    Row 20        Live "Command>" prompt, redrawn on every keystroke
-    Row 22        Echo of the last command entered, e.g. "Command> help"
-    Row 23+       Output of the last command
+    Rows 1-21     Console transcript: header, prompts, commands and output
+    Row 22        Blank separator
+    Rows 23-30    Marquee animation area (the font is 8 rows tall)
+                  (row numbers for a 120 x 30 window)
 
-The output area is cleared before each command's output is printed, so the
-screen always shows the most recent command and its result. On a window
-shorter than 28 rows the blank spacer rows 9, 19 and 21 are dropped: the
-header starts on row 9, the prompt is on row 18 and the output starts on
-row 19.
+On exit the marquee rows are cleared and the scrolling region is reset, so
+the window behaves normally again.
 
 
 COMMANDS
@@ -107,8 +111,9 @@ The "help" command lists the six commands of the marquee console:
     help           Prints the list of commands and their descriptions.
 
     start_marquee  Starts scrolling the saved text (initially "Hello, World!")
-                   across the top eight rows and prints
-                   "Marquee animation started."
+                   across the bottom eight rows and prints
+                   "Marquee animation started." (followed by a warning line
+                   if ascii_big.txt could not be found).
 
     stop_marquee   Stops the animation, clears the marquee rows and prints
                    "Marquee animation stopped."
@@ -176,7 +181,8 @@ NOTES ON INPUT HANDLING
   - start_marquee, stop_marquee and exit ignore any text typed after them.
   - Pressing Enter on an empty line simply shows the prompt again.
   - Backspace edits the line being typed. Arrow, function and other
-    navigation keys are ignored.
+    navigation keys are ignored. A line longer than the window width shows
+    only its tail on the prompt line, but the whole line is processed.
   - Input is read by polling the keyboard rather than with std::cin, which
     would block the console thread and cannot be combined with a live
     marquee.
