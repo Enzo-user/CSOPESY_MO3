@@ -1,0 +1,12 @@
+# Build artifacts
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.o
+build/
+x64/
+Debug/
+Release/
+.vs/
+out/

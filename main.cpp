@@ -9,6 +9,10 @@
 // transcript above those rows, so the marquee keeps animating while commands
 // are typed.
 //
+// Two diagnostic commands, "stats" and "set_poll", expose the measured
+// refresh interval and keyboard polling behaviour for the technical report;
+// they are not part of the specification and are not listed by "help".
+//
 // Windows only: <conio.h> provides non-blocking keyboard polling and
 // <windows.h> is used to enable ANSI escape sequences in the console.
 
@@ -17,6 +21,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -33,9 +38,11 @@ namespace {
 // ---- Layout and timing --------------------------------------------------
 
 const int MARQUEE_ROWS = 8;        // the font is 8 rows tall
-const int INPUT_POLL_MS = 10;      // keyboard polling interval
+const int INPUT_POLL_MS = 10;      // default keyboard polling interval (set_poll changes it)
+const int MARQUEE_TICK_MS = 10;    // how often the marquee thread checks its timers
 const int DEFAULT_SPEED_MS = 100;  // marquee refresh interval
 const long long MAX_SPEED_MS = 999999999; // largest value set_speed accepts
+const long long MAX_POLL_MS = 1000;       // largest value set_poll accepts
 const int FALLBACK_WIDTH = 99;     // marquee width if the console size is unknown
 const int FALLBACK_ROWS = 30;      // window height if the console size is unknown
 const char FONT_FILE[] = "ascii_big.txt";
@@ -53,11 +60,44 @@ std::string marquee_text = "Hello, World!"; // the text saved in memory by set_t
 std::atomic<bool> animation_on(false);      // start_marquee / stop_marquee
 std::atomic<bool> frame_requested(false);   // draw the next frame right away
 std::atomic<int> speed_ms(DEFAULT_SPEED_MS);
+std::atomic<int> poll_ms(INPUT_POLL_MS);
 std::atomic<bool> program_running(true);    // cleared by exit
 
 std::map<char, std::vector<std::string>> font_map; // read-only once loaded
 bool font_loaded = false;
-int marquee_top = 0; // first row of the marquee area; set before the thread starts
+int marquee_top = 0;    // first row of the marquee area; set before the thread starts
+int region_bottom = 0;  // last row of the transcript; set before the thread starts
+
+// Measurements behind the "stats" command, so the refresh-rate versus
+// polling-rate trade-off can be argued with numbers (see docs/MEASUREMENTS.md).
+struct Stats {
+    unsigned long long frames = 0;        // marquee frames drawn
+    unsigned long long late_frames = 0;   // frames whose interval exceeded 1.5x the setting
+    unsigned long long intervals = 0;     // frame-to-frame intervals measured
+    double interval_sum_ms = 0.0;
+    double interval_max_ms = 0.0;
+    double interval_last_ms = 0.0;
+    double draw_sum_ms = 0.0;             // time to build and write one frame
+    double draw_max_ms = 0.0;
+    unsigned long long polls = 0;         // keyboard polling sleeps measured
+    double poll_sum_ms = 0.0;
+    double poll_max_ms = 0.0;
+    unsigned long long keys = 0;          // keystrokes echoed
+    double key_sum_ms = 0.0;              // from reading the key to the prompt being redrawn
+    double key_max_ms = 0.0;
+};
+std::mutex stats_mtx;
+Stats stats;
+
+double ms_between(std::chrono::steady_clock::time_point from, std::chrono::steady_clock::time_point to) {
+    return std::chrono::duration<double, std::milli>(to - from).count();
+}
+
+std::string fmt_ms(double ms) {
+    char buffer[32];
+    std::snprintf(buffer, sizeof buffer, "%.2f", ms);
+    return buffer;
+}
 
 // ---- Small helpers ------------------------------------------------------
 
@@ -258,6 +298,8 @@ void clear_marquee_area() {
 void marquee_thread_main() {
     std::size_t offset = 0;
     std::chrono::steady_clock::time_point next_frame = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point last_frame;
+    bool have_last_frame = false;
 
     while (program_running) {
         const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -271,14 +313,36 @@ void marquee_thread_main() {
             }
             draw_marquee_frame(build_marquee_rows(text), offset);
             ++offset;
+            const std::chrono::steady_clock::time_point drawn = std::chrono::steady_clock::now();
 
-            const std::chrono::milliseconds interval(speed_ms.load());
+            const int speed = speed_ms.load();
+            {
+                std::lock_guard<std::mutex> lock(stats_mtx);
+                ++stats.frames;
+                const double draw = ms_between(now, drawn);
+                stats.draw_sum_ms += draw;
+                if (draw > stats.draw_max_ms) stats.draw_max_ms = draw;
+                if (have_last_frame && !forced) {
+                    const double interval = ms_between(last_frame, now);
+                    ++stats.intervals;
+                    stats.interval_sum_ms += interval;
+                    stats.interval_last_ms = interval;
+                    if (interval > stats.interval_max_ms) stats.interval_max_ms = interval;
+                    if (interval > 1.5 * speed) ++stats.late_frames;
+                }
+            }
+            last_frame = now;
+            have_last_frame = true;
+
+            const std::chrono::milliseconds interval(speed);
             next_frame = forced ? now + interval : next_frame + interval;
             if (next_frame < now) {
                 next_frame = now; // after a stall, resume instead of catching up
             }
+        } else if (!animation_on) {
+            have_last_frame = false; // the next start begins a fresh measurement
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(INPUT_POLL_MS));
+        std::this_thread::sleep_for(std::chrono::milliseconds(MARQUEE_TICK_MS));
     }
 }
 
@@ -307,8 +371,8 @@ std::string help_text() {
            "exit - terminates the console\n";
 }
 
-// Parses a whole number of milliseconds (digits only, from 1 to MAX_SPEED_MS).
-bool parse_speed(const std::string &argument, int &milliseconds) {
+// Parses a whole number of milliseconds (digits only, from 1 to maximum).
+bool parse_milliseconds(const std::string &argument, long long maximum, int &milliseconds) {
     if (argument.empty()) {
         return false;
     }
@@ -318,7 +382,7 @@ bool parse_speed(const std::string &argument, int &milliseconds) {
             return false;
         }
         value = value * 10 + (argument[i] - '0');
-        if (value > MAX_SPEED_MS) {
+        if (value > maximum) {
             return false;
         }
     }
@@ -327,6 +391,42 @@ bool parse_speed(const std::string &argument, int &milliseconds) {
     }
     milliseconds = static_cast<int>(value);
     return true;
+}
+
+// The "stats" diagnostic: what was actually measured since the last reset.
+std::string stats_text() {
+    Stats s;
+    {
+        std::lock_guard<std::mutex> lock(stats_mtx);
+        s = stats;
+    }
+    std::string out;
+    out += "Refresh : set " + std::to_string(speed_ms.load()) + " ms | measured ";
+    if (s.intervals == 0) {
+        out += "n/a (run start_marquee and wait a moment)\n";
+    } else {
+        out += "avg " + fmt_ms(s.interval_sum_ms / static_cast<double>(s.intervals)) + ", max " +
+               fmt_ms(s.interval_max_ms) + ", last " + fmt_ms(s.interval_last_ms) + " ms\n";
+    }
+    out += "Frames  : " + std::to_string(s.frames) + " drawn, " + std::to_string(s.late_frames) +
+           " late (interval > 1.5x setting)\n";
+    out += "Draw    : avg " + fmt_ms(s.frames ? s.draw_sum_ms / static_cast<double>(s.frames) : 0.0) +
+           ", max " + fmt_ms(s.draw_max_ms) + " ms per frame (8 rows, one write)\n";
+    out += "Polling : set " + std::to_string(poll_ms.load()) + " ms | measured sleep avg " +
+           fmt_ms(s.polls ? s.poll_sum_ms / static_cast<double>(s.polls) : 0.0) + ", max " +
+           fmt_ms(s.poll_max_ms) + " ms (longest a key can wait to be noticed)\n";
+    out += "Typing  : key-to-screen avg " + fmt_ms(s.keys ? s.key_sum_ms / static_cast<double>(s.keys) : 0.0) +
+           ", max " + fmt_ms(s.key_max_ms) + " ms | worst ~" + fmt_ms(s.poll_max_ms + s.key_max_ms) +
+           " ms | " + std::to_string(s.keys) + " keys\n";
+    out += "Terminal: " + std::to_string(console_width() + 1) + "x" + std::to_string(console_rows()) +
+           " | transcript rows 1-" + std::to_string(region_bottom) + " | marquee rows " +
+           std::to_string(marquee_top) + "-" + std::to_string(marquee_top + MARQUEE_ROWS - 1) + "\n";
+    return out;
+}
+
+void reset_stats() {
+    std::lock_guard<std::mutex> lock(stats_mtx);
+    stats = Stats();
 }
 
 // ---- Command interpreter ------------------------------------------------
@@ -367,13 +467,33 @@ bool process_command(const std::string &input, std::string &output) {
         }
     } else if (command == "set_speed") {
         int milliseconds = 0;
-        if (parse_speed(argument, milliseconds)) {
+        if (parse_milliseconds(argument, MAX_SPEED_MS, milliseconds)) {
             speed_ms = milliseconds;
             frame_requested = true; // apply the new interval right away
+            reset_stats();          // measurements restart at the new setting
             output = "Marquee speed set to " + std::to_string(milliseconds) + " milliseconds.\n";
         } else {
             output = "Error: set_speed requires a whole number of milliseconds greater than zero. "
                      "Usage: set_speed <milliseconds>\n";
+        }
+    } else if (command == "set_poll") { // diagnostic: keyboard polling interval
+        int milliseconds = 0;
+        if (parse_milliseconds(argument, MAX_POLL_MS, milliseconds)) {
+            poll_ms = milliseconds;
+            reset_stats();
+            output = "Keyboard polling interval set to " + std::to_string(milliseconds) + " milliseconds.\n";
+        } else {
+            output = "Error: set_poll requires a whole number of milliseconds from 1 to " +
+                     std::to_string(MAX_POLL_MS) + ". Usage: set_poll <milliseconds>\n";
+        }
+    } else if (command == "stats") { // diagnostic: measured refresh and polling behaviour
+        if (argument == "reset") {
+            reset_stats();
+            output = "Statistics reset.\n";
+        } else if (argument.empty()) {
+            output = stats_text();
+        } else {
+            output = "Error: unknown option '" + argument + "'. Usage: stats [reset]\n";
         }
     } else if (command == "exit") {
         output = "Terminating console...\n";
@@ -410,10 +530,19 @@ std::string read_command_line() {
 
     while (true) {
         if (!_kbhit()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(INPUT_POLL_MS));
+            // The polling rate: a key pressed right after this check waits for
+            // the whole sleep, so the sleep is timed for the "stats" command.
+            const std::chrono::steady_clock::time_point before = std::chrono::steady_clock::now();
+            std::this_thread::sleep_for(std::chrono::milliseconds(poll_ms.load()));
+            const double slept = ms_between(before, std::chrono::steady_clock::now());
+            std::lock_guard<std::mutex> lock(stats_mtx);
+            ++stats.polls;
+            stats.poll_sum_ms += slept;
+            if (slept > stats.poll_max_ms) stats.poll_max_ms = slept;
             continue;
         }
 
+        const std::chrono::steady_clock::time_point seen = std::chrono::steady_clock::now();
         int key = _getch();
         if (key == '\r' || key == '\n') {
             std::lock_guard<std::mutex> lock(console_mtx);
@@ -442,6 +571,12 @@ std::string read_command_line() {
             continue; // other control keys are ignored
         }
         redraw_prompt(input);
+
+        const double latency = ms_between(seen, std::chrono::steady_clock::now());
+        std::lock_guard<std::mutex> lock(stats_mtx);
+        ++stats.keys;
+        stats.key_sum_ms += latency;
+        if (latency > stats.key_max_ms) stats.key_max_ms = latency;
     }
 }
 
@@ -454,7 +589,7 @@ int main() {
 
     // The transcript scrolls inside rows 1..region_bottom; the marquee owns
     // the bottom MARQUEE_ROWS rows, with one blank row between them.
-    int region_bottom = console_rows() - MARQUEE_ROWS - 1;
+    region_bottom = console_rows() - MARQUEE_ROWS - 1;
     if (region_bottom < 1) {
         region_bottom = 1;
     }

@@ -134,6 +134,22 @@ Any other input is treated as an unrecognized command. The console prints an err
 message (`Unrecognized command: <word>. Type 'help' to see the available
 commands.`) and returns the user to the `Command>` prompt.
 
+### Diagnostics (not part of the specification)
+
+Two extra commands exist for the technical report's refresh-rate versus
+polling-rate measurements. They are deliberately not listed by `help`, which
+reproduces the specification's sample exactly.
+
+| Command | Behaviour |
+|---|---|
+| `stats` | Prints what was measured since the last reset: the real interval between marquee frames (average, maximum, last), how many frames were late, the time to draw a frame, the real duration of the keyboard polling sleep, the delay from a keystroke being read to the prompt being redrawn, and the terminal layout. |
+| `stats reset` | Clears the measurements. `set_speed` and `set_poll` also clear them, so each run starts clean. |
+| `set_poll <milliseconds>` | Sets the keyboard polling interval (1 to 1000 ms, default 10). |
+
+[docs/MEASUREMENTS.md](docs/MEASUREMENTS.md) is the step-by-step procedure for the
+report, with tables to fill in; [docs/TESTING.md](docs/TESTING.md) is the manual
+test script for the demo video.
+
 ## Refresh Rate and Polling Rate
 
 Two intervals drive the console, both defined as constants at the top of
