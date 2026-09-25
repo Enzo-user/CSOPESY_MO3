@@ -2,9 +2,9 @@
 CSOPESY MO3 - Marquee Console
 ================================================================================
 
-Semi-Major Output 1 for CSOPESY (DLSU, Term 1 AY 2026-2027): a single-file
-C++ main menu console with a command interpreter and a live ASCII-art text
-marquee, built for the Windows console.
+Semi-Major Output 1 for CSOPESY (DLSU, Term 1 AY 2026-2027): a C++ main menu
+console with a command interpreter and a live ASCII-art text marquee, built
+for the Windows console.
 
 
 GROUP DEVELOPER
@@ -24,15 +24,13 @@ The program's welcome header prints the same four names under
 
 ENTRY POINT
 -----------
-File:     main.cpp
+File:     src/main.cpp
 Function: int main()
+Class:    MarqueeConsole (src/MarqueeConsole.h, src/MarqueeConsole.cpp)
 
-The entire program is contained in the single source file main.cpp, located
-at the root of this repository. main() is the last function in the file.
-Everything above it is helper code, grouped by section: layout constants and
-shared state, the ASCII font loader, marquee rendering and the animation
-thread, the console text (welcome header and help), the command interpreter,
-and the keyboard input loop.
+main() creates one MarqueeConsole and calls run() on it; everything the
+program does lives in that class and the classes it owns. See PROGRAM
+STRUCTURE below for the full list.
 
 ascii_big.txt is the 8-row ASCII font the marquee is drawn with, and
 config.txt holds the startup settings. Both are read when the program starts,
@@ -50,7 +48,8 @@ are needed.
 
   Visual Studio (used for the demo video)
   ---------------------------------------
-    1. Create an empty C++ Console App project and add main.cpp to it.
+    1. Create an empty C++ Console App project and add every file in src/
+       to it (8 .cpp files and their headers).
     2. Copy ascii_big.txt and config.txt into the project folder (the folder
        containing the .vcxproj file). That folder is the working directory
        Visual Studio uses when you press Run/Debug, and the folder to edit
@@ -59,12 +58,12 @@ are needed.
 
   Developer Command Prompt (MSVC)
   -------------------------------
-    cl /EHsc /std:c++17 main.cpp
+    cl /EHsc /std:c++17 src\*.cpp /Fe:marquee.exe
     main.exe
 
   MinGW-w64 (g++)
   ---------------
-    g++ -std=c++17 -o marquee main.cpp
+    g++ -std=c++17 -o marquee src/*.cpp
     marquee.exe
 
 Run the program from the folder that contains ascii_big.txt and config.txt,
@@ -123,6 +122,41 @@ recording shows which values the run actually used:
     Config: text "Hello, World!", refresh 100 ms, polling 10 ms
 
 Both commands still work at run time and override the file for that run.
+
+
+PROGRAM STRUCTURE
+-----------------
+One class per job, each in its own header and source file under src/:
+
+    src/main.cpp          Entry point: creates a MarqueeConsole and runs it
+    src/MarqueeConsole.*  The application: welcome header, the Command> loop,
+                          the command interpreter, keyboard polling
+    src/Config.*          The settings read from config.txt at startup
+    src/AsciiFont.*       The ascii_big.txt glyphs; renders text into 8 rows
+    src/Console.*         The Windows console: ANSI support, window size, the
+                          scrolling region, and the one mutex every write to
+                          std::cout goes through
+    src/Marquee.*         The scrolling text, the refresh interval and the
+                          thread that animates it
+    src/Metrics.*         What was measured, behind the "stats" diagnostic
+    src/DataFile.*        Finds ascii_big.txt and config.txt (working
+                          directory, then next to the executable)
+    src/Text.*            trim() and the millisecond parser, shared by the
+                          config reader and the command interpreter
+
+MarqueeConsole owns the parts in the order they must be destroyed: the marquee
+thread is joined before the console gives the window its scrolling back.
+
+Only Console, DataFile and MarqueeConsole touch the Windows API. Config,
+AsciiFont, Metrics and Text are plain standard C++, which is what tests/smoke.cpp
+exercises:
+
+    g++ -std=c++17 -o smoke tests/smoke.cpp src/Text.cpp src/Config.cpp \
+        src/AsciiFont.cpp src/Metrics.cpp
+    ./smoke
+
+The Windows console, the marquee thread and the keyboard loop are covered by the
+manual script in docs/TESTING.md instead.
 
 
 COMMANDS
@@ -193,18 +227,18 @@ available commands.") and returns the user to the "Command>" prompt.
 
 REFRESH RATE AND POLLING RATE
 -----------------------------
-Two intervals drive the console, both defined as constants at the top of
-main.cpp:
+Two intervals drive the console, both set from config.txt at startup:
 
-  - Marquee refresh (DEFAULT_SPEED_MS, 100 ms; changed at run time with
-    set_speed). The animation thread redraws the eight marquee rows once per
+  - Marquee refresh (refresh-rate, 100 ms by default; changed at run time
+    with set_speed). Marquee's thread redraws the eight marquee rows once per
     interval, shifting the text one column to the left each frame.
-  - Keyboard polling (INPUT_POLL_MS, 10 ms). The console thread checks
-    _kbhit() every 10 ms and redraws the prompt line whenever a key arrives,
-    so typing stays responsive while the marquee animates.
+  - Keyboard polling (polling-rate, 10 ms by default; set_poll at run time).
+    MarqueeConsole checks _kbhit() every interval and redraws the prompt line
+    whenever a key arrives, so typing stays responsive while the marquee
+    animates.
 
-All writes to the console go through a single mutex, so a marquee frame and a
-prompt redraw never interleave. A new set_speed value, and start_marquee
+All writes to the console go through the one mutex inside Console, so a
+marquee frame and a prompt redraw never interleave. A new set_speed value, and start_marquee
 after a stop, take effect on the next poll rather than after the previous
 interval has run out. Both intervals are implemented as sleeps, so their real
 granularity is the Windows timer resolution (about 15.6 ms by default): a

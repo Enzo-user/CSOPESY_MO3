@@ -45,11 +45,11 @@ Command> exit
 Terminating console...
 ```
 
-The header lists the four group members in the sample's `Last name, First name` format (Obcena, Hans Gabriel; Suerte, Lorenzo Enrique; Cordero, Ramuel Sean; Eleydo, Renzel Vince) and the version date. Keep the names and the date in sync across `main.cpp`, `README.md`, `README.txt`, and `CONTRIBUTIONS.md`.
+The header lists the four group members in the sample's `Last name, First name` format (Obcena, Hans Gabriel; Suerte, Lorenzo Enrique; Cordero, Ramuel Sean; Eleydo, Renzel Vince) and the version date. The header text lives in `header_text()` in `src/MarqueeConsole.cpp`; keep the names and the date in sync across it, `README.md`, `README.txt`, and `CONTRIBUTIONS.md`.
 
 ## Scope rules
 
-- All six commands listed by `help` are implemented: `help`, `set_text`, and `exit` as required by the exercise, plus `start_marquee`, `stop_marquee`, and `set_speed` from the marquee console specification. The marquee engine (ASCII font loader, animation thread, keyboard-polling input loop) was integrated from a group member's prototype, `marquee.cpp`.
+- All six commands listed by `help` are implemented: `help`, `set_text`, and `exit` as required by the exercise, plus `start_marquee`, `stop_marquee`, and `set_speed` from the marquee console specification. The marquee engine (ASCII font loader, animation thread, keyboard-polling input loop) was integrated from a group member's prototype, `marquee.cpp`, and now lives in `AsciiFont`, `Marquee` and `MarqueeConsole`.
 - The `help` output reproduces the sample text above. `set_text` prints `Text saved for marquee: <text>`; `exit` prints `Terminating console...`.
 - Any other input is an unrecognized command: print an error message and return to the `Command>` prompt.
 - The program targets the Windows console: `<conio.h>` for non-blocking keyboard polling, `<windows.h>` to enable ANSI escape sequences, and the standard `<thread>`, `<atomic>`, `<mutex>` headers for the animation thread. Output goes through `std::cout`; command comparison uses `std::string`.
@@ -58,4 +58,5 @@ The header lists the four group members in the sample's `Last name, First name` 
 - Two diagnostic commands, `stats` (with `stats reset`) and `set_poll <milliseconds>`, expose the measured refresh interval, polling sleep and key-to-screen delay for the technical report. They are not listed by `help`; `docs/MEASUREMENTS.md` and `docs/TESTING.md` describe how they are used.
 - `config.txt` is read once at startup for `marquee-text`, `refresh-rate` and `polling-rate` (the same three values as `set_text`, `set_speed` and `set_poll`). It is the only file the black-box quiz allows to be modified, so the program must never need a rebuild to change them: `key value` per line, `#` comments, unknown keys and unusable values keep the defaults, and the values in force are printed under the welcome header.
 - `README.txt` is the full submission document (the specification asks for it by name); `README.md` is a short landing page that links to it. Do not duplicate the full text in both.
-- Keep the program in a single source file, `main.cpp`, with a `main()` function. The only other runtime files are `ascii_big.txt` and `config.txt`.
+- The program is one class per job, header and source per class, under `src/`: `MarqueeConsole` (the application: header, command loop, interpreter, keyboard polling), `Config`, `AsciiFont`, `Console`, `Marquee`, `Metrics`, plus `DataFile` and `Text` for the two shared helpers. `src/main.cpp` holds `main()`, which creates one `MarqueeConsole` and calls `run()`. Add a class only when a new job appears — no interface with one implementation, no factory, no base class for the six commands. The only runtime files are `ascii_big.txt` and `config.txt`.
+- Only `Console`, `DataFile` and `MarqueeConsole` may include `<windows.h>` or `<conio.h>`. Keeping `Config`, `AsciiFont`, `Metrics` and `Text` free of them is what makes `tests/smoke.cpp` runnable on any platform; run it after touching any of those four.

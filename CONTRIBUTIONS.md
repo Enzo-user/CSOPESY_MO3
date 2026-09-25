@@ -15,7 +15,7 @@ four equal shares of 25%, one per member.
 
 ## Cordero, Ramuel Sean — Marquee engine: ASCII font and animation prototype
 
-The marquee engine that `main.cpp` is built around was contributed as the
+The marquee engine the program is built around was contributed as the
 standalone prototype `marquee.cpp` together with the `ascii_big.txt` font. The
 prototype is preserved unchanged in the repository history. It provided:
 
@@ -32,8 +32,8 @@ prototype is preserved unchanged in the repository history. It provided:
 
 - Welcome header: the `Welcome to CSOPESY!` banner, the group developer list and
   the version date, in the layout of the specification's sample output.
-- Overall program structure of `main.cpp`: includes, helper function layout and
-  the `main()` entry point.
+- Overall program structure: the split into one class per job under `src/`, and
+  the `main()` entry point that creates the `MarqueeConsole`.
 - The screen layout: the console transcript scrolls inside an ANSI scrolling
   region exactly like the sample output, while the marquee owns the bottom eight
   rows of the window.

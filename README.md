@@ -1,8 +1,8 @@
 # CSOPESY MO3 — Marquee Console
 
-Semi-Major Output 1 for CSOPESY (DLSU, Term 1 AY 2026–2027): a single-file C++
-main menu console with a command interpreter and a live ASCII-art text marquee,
-built for the Windows console.
+Semi-Major Output 1 for CSOPESY (DLSU, Term 1 AY 2026–2027): a C++ main menu
+console with a command interpreter and a live ASCII-art text marquee, built for
+the Windows console.
 
 **[README.txt](README.txt) is the full submission document** — this page is the
 short version. Workload contribution is in [CONTRIBUTIONS.md](CONTRIBUTIONS.md).
@@ -20,13 +20,39 @@ short version. Workload contribution is in [CONTRIBUTIONS.md](CONTRIBUTIONS.md).
 
 | | |
 |---|---|
-| **File** | [`main.cpp`](main.cpp) |
-| **Function** | `int main()` (the last function in the file) |
+| **File** | [`src/main.cpp`](src/main.cpp) |
+| **Function** | `int main()` |
+| **Class** | [`MarqueeConsole`](src/MarqueeConsole.h) |
 
-The whole program is that one source file. Its two runtime files are
-`ascii_big.txt`, the 8-row ASCII font the marquee is drawn with, and
+`main()` creates one `MarqueeConsole` and calls `run()`. The two runtime files
+are `ascii_big.txt`, the 8-row ASCII font the marquee is drawn with, and
 `config.txt`, the startup settings; both are read at startup from the working
 directory or from the folder holding the executable.
+
+## Program Structure
+
+One class per job, header and source per class:
+
+| Unit | Responsibility |
+|---|---|
+| [`MarqueeConsole`](src/MarqueeConsole.h) | The application: welcome header, the `Command>` loop, the command interpreter, keyboard polling |
+| [`Config`](src/Config.h) | The settings read from `config.txt` at startup |
+| [`AsciiFont`](src/AsciiFont.h) | The `ascii_big.txt` glyphs; renders text into 8 rows |
+| [`Console`](src/Console.h) | The Windows console: ANSI support, window size, the scrolling region, and the one mutex every write to `std::cout` goes through |
+| [`Marquee`](src/Marquee.h) | The scrolling text, the refresh interval and the thread that animates it |
+| [`Metrics`](src/Metrics.h) | What was measured, behind the `stats` diagnostic |
+| [`DataFile`](src/DataFile.h) | Finds `ascii_big.txt` and `config.txt` |
+| [`Text`](src/Text.h) | `trim()` and the millisecond parser |
+
+`MarqueeConsole` owns the parts in the order they must be destroyed: the marquee
+thread is joined before the console gives the window its scrolling back. Only
+`Console`, `DataFile` and `MarqueeConsole` touch the Windows API, so the rest is
+plain standard C++ and runs anywhere:
+
+```sh
+g++ -std=c++17 -o smoke tests/smoke.cpp src/Text.cpp src/Config.cpp src/AsciiFont.cpp src/Metrics.cpp
+./smoke        # 56 checks passed
+```
 
 ## How to Run
 
@@ -34,11 +60,11 @@ Needs a C++11-or-newer Windows compiler (MSVC or MinGW-w64 g++) and Windows 10
 or later. No libraries, no build system.
 
 ```bat
-cl /EHsc /std:c++17 main.cpp        :: MSVC
-g++ -std=c++17 -o marquee main.cpp  :: MinGW-w64
+cl /EHsc /std:c++17 src\*.cpp /Fe:marquee.exe  :: MSVC
+g++ -std=c++17 -o marquee src/*.cpp            :: MinGW-w64
 ```
 
-In Visual Studio: empty **C++ Console App**, add `main.cpp`, copy
+In Visual Studio: empty **C++ Console App**, add every file in `src/`, copy
 `ascii_big.txt` and `config.txt` next to the `.vcxproj`, press Run/Debug. Use a
 window of at least 100 × 28 (the default 120 × 30 is ideal): the marquee owns
 the bottom eight rows and the transcript scrolls above them.
@@ -80,6 +106,6 @@ Config: text "Hello, World!", refresh 100 ms, polling 10 ms
 
 ## Documentation
 
-- [README.txt](README.txt) — full document: screen layout, every command, input handling
+- [README.txt](README.txt) — full document: program structure, screen layout, every command, input handling
 - [docs/TESTING.md](docs/TESTING.md) — manual test script for the demo video
 - [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md) — refresh vs. polling rate procedure

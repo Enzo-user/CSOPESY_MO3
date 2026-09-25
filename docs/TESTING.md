@@ -1,7 +1,8 @@
 # Manual test script (demo video and black-box checks)
 
-Run the program from the IDE (the video must show Run/Debug being pressed) in a
-console window of at least 100 columns by 28 rows; the Windows default of
+Build every source in `src/` (`cl /EHsc /std:c++17 src\*.cpp` or
+`g++ -std=c++17 -o marquee src/*.cpp`) and run it from the IDE (the video must
+show Run/Debug being pressed) in a console window of at least 100 columns by 28 rows; the Windows default of
 120 by 30 is ideal. `ascii_big.txt` and `config.txt` must be in the working
 directory (the Visual Studio project folder) or next to the executable. Type each line and check the
 result. The same sequence is what the automated console harness checks.
@@ -53,6 +54,22 @@ line under the header before typing anything.
 | 30 | `bogus-key 5` | `Config: unknown setting 'bogus-key' ignored.` and everything else is unaffected. |
 | 31 | Rename `config.txt` away | `Config: config.txt was not found, using the defaults.` and the console runs normally at 100 ms / 10 ms. |
 | 32 | Any values, then `set_speed 50` / `set_text Hi` at run time | The typed commands override the file for that run; the file is untouched and applies again on the next run. |
+
+## Smoke test
+
+The classes that do not touch the Windows API are checked by `tests/smoke.cpp`,
+which runs on any platform and needs no framework:
+
+```sh
+g++ -std=c++17 -o smoke tests/smoke.cpp src/Text.cpp src/Config.cpp src/AsciiFont.cpp src/Metrics.cpp
+./smoke
+```
+
+It covers the `config.txt` reader (defaults, the shipped file, edits, invalid
+values, unknown keys, CRLF line endings), the font loader and renderer, the
+string helpers and the `stats` arithmetic — rows 25 to 32 above, minus the parts
+that need a real console. Run it before the manual script; it is faster and it
+fails loudly.
 
 ## Missing font check
 
