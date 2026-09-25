@@ -1,27 +1,10 @@
-# CSOPESY MO3 - Marquee Console configuration
-#
-# Read once when the program starts, from the working directory or from the
-# folder holding the executable. One "key value" pair per line; everything
-# after a "#" is a comment; "-" and "_" in a key are interchangeable
-# (refresh-rate and refresh_rate are the same setting).
-#
-# A missing file, an unknown key or an unusable value keeps the built-in
-# default; the console prints the settings in force under the welcome header.
-# Nothing here needs a rebuild: edit, save, then run the program again.
+# CSOPESY MO3 - Marquee Console settings. Read once when the program starts,
+# from the working directory or the folder holding the executable. One
+# "key value" pair per line; "#" starts a comment; "-" and "_" in a key are
+# the same. A missing file, an unknown key or an unusable value keeps the
+# built-in default, and the settings in force are printed under the welcome
+# header. Editing this file never needs a rebuild: edit, save, run again.
 
-# Text the marquee scrolls, until set_text replaces it at run time.
-# Quotes are optional and are stripped; use them to keep leading or trailing
-# spaces. Everything after a "#" is treated as a comment, not as text.
-marquee-text "Hello, World!"
-
-# Marquee animation refresh, in milliseconds: one frame (one column of
-# scrolling) per interval. Whole number, 1 or more. Same as set_speed.
-# Lower is smoother and redraws more often; below the Windows timer
-# resolution (about 15.6 ms) it simply refreshes as fast as the console can.
-refresh-rate 100
-
-# Keyboard polling interval, in milliseconds: how often the console checks
-# for a keystroke while the marquee animates. Whole number, 1 to 1000.
-# Same as set_poll. Lower feels more responsive while typing; higher leaves
-# more time to the marquee but delays the echo of typed characters.
-polling-rate 10
+marquee-text "Hello, World!"   # scrolling text; quotes optional, stripped
+refresh-rate 100               # marquee frame interval in ms, 1 or more
+polling-rate 10                # keyboard check interval in ms, 1 to 1000

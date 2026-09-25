@@ -116,9 +116,9 @@ std::string trim(const std::string &s) {
     return s.substr(first, last - first + 1);
 }
 
-// ANSI escape that moves the cursor to the given 1-based row and column.
-std::string move_to(int row, int col = 1) {
-    return "\033[" + std::to_string(row) + ";" + std::to_string(col) + "H";
+// ANSI escape that moves the cursor to column 1 of the given 1-based row.
+std::string move_to(int row) {
+    return "\033[" + std::to_string(row) + ";1H";
 }
 
 // Lets the Windows console interpret ANSI escape sequences.
@@ -177,12 +177,8 @@ bool open_data_file(const std::string &name, std::ifstream &file) {
     if (file.is_open()) {
         return true;
     }
-    const std::string directory = exe_directory();
-    if (directory.empty()) {
-        return false;
-    }
     file.clear();
-    file.open((directory + name).c_str());
+    file.open((exe_directory() + name).c_str());
     return file.is_open();
 }
 
@@ -360,18 +356,16 @@ void marquee_thread_main() {
 // ---- Console text -------------------------------------------------------
 
 // The welcome header with the group developers and the version date.
-std::vector<std::string> header_lines() {
-    std::vector<std::string> lines;
-    lines.push_back("Welcome to CSOPESY!");
-    lines.push_back("");
-    lines.push_back("Group developer:");
-    lines.push_back("Obcena, Hans Gabriel");
-    lines.push_back("Suerte, Lorenzo Enrique");
-    lines.push_back("Cordero, Ramuel Sean");
-    lines.push_back("Eleydo, Renzel Vince");
-    lines.push_back("");
-    lines.push_back("Version date: 2026-09-21");
-    return lines;
+std::string header_text() {
+    return "Welcome to CSOPESY!\n"
+           "\n"
+           "Group developer:\n"
+           "Obcena, Hans Gabriel\n"
+           "Suerte, Lorenzo Enrique\n"
+           "Cordero, Ramuel Sean\n"
+           "Eleydo, Renzel Vince\n"
+           "\n"
+           "Version date: 2026-09-21\n";
 }
 
 // Every command and its description.
@@ -453,29 +447,24 @@ std::vector<std::string> load_config() {
             }
         }
 
-        int milliseconds = 0;
         if (key == "marquee-text") {
             if (value.empty()) {
                 notes.push_back("Config: marquee-text has no text, keeping \"" + marquee_text + "\".");
             } else {
                 marquee_text = unquote(value);
             }
-        } else if (key == "refresh-rate") {
-            if (parse_milliseconds(value, MAX_SPEED_MS, milliseconds)) {
-                speed_ms = milliseconds;
+        } else if (key == "refresh-rate" || key == "polling-rate") {
+            const bool refresh = (key == "refresh-rate");
+            std::atomic<int> &setting = refresh ? speed_ms : poll_ms;
+            const long long maximum = refresh ? MAX_SPEED_MS : MAX_POLL_MS;
+            int milliseconds = 0;
+            if (parse_milliseconds(value, maximum, milliseconds)) {
+                setting = milliseconds;
             } else {
-                notes.push_back("Config: refresh-rate '" + value +
-                                "' is not a whole number of milliseconds greater than zero, keeping " +
-                                std::to_string(speed_ms.load()) + ".");
-            }
-        } else if (key == "polling-rate") {
-            if (parse_milliseconds(value, MAX_POLL_MS, milliseconds)) {
-                poll_ms = milliseconds;
-            } else {
-                notes.push_back("Config: polling-rate '" + value +
+                notes.push_back("Config: " + key + " '" + value +
                                 "' is not a whole number of milliseconds from 1 to " +
-                                std::to_string(MAX_POLL_MS) + ", keeping " +
-                                std::to_string(poll_ms.load()) + ".");
+                                std::to_string(maximum) + ", keeping " +
+                                std::to_string(setting.load()) + ".");
             }
         } else {
             notes.push_back("Config: unknown setting '" + key + "' ignored.");
@@ -697,10 +686,7 @@ int main() {
     {
         std::lock_guard<std::mutex> lock(console_mtx);
         std::cout << "\033[2J" << "\033[1;" << region_bottom << "r" << move_to(1);
-        const std::vector<std::string> header = header_lines();
-        for (std::size_t i = 0; i < header.size(); ++i) {
-            std::cout << header[i] << "\n";
-        }
+        std::cout << header_text();
         for (std::size_t i = 0; i < config_notes.size(); ++i) {
             std::cout << config_notes[i] << "\n";
         }
