@@ -10,8 +10,8 @@ from.
 
 | Term | Meaning | Where it is set |
 |---|---|---|
-| Refresh rate | How often the marquee thread redraws the eight marquee rows: one frame every `speed_ms`. | `set_speed <ms>` (default 100) |
-| Polling rate | How often the console thread checks the keyboard with `_kbhit()`: once every `poll_ms`. | `set_poll <ms>` (default 10) |
+| Refresh rate | How often the marquee thread redraws the eight marquee rows: one frame every `speed_ms`. | `refresh-rate` in `config.txt` at startup, `set_speed <ms>` at run time (default 100) |
+| Polling rate | How often the console thread checks the keyboard with `_kbhit()`: once every `poll_ms`. | `polling-rate` in `config.txt` at startup, `set_poll <ms>` at run time (default 10) |
 
 Both are sleeps, so the operating system decides the real granularity. On Windows the
 default timer resolution is about 15.6 ms: a sleep of 1 or 10 ms really lasts about

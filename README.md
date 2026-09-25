@@ -32,9 +32,10 @@ the ASCII font loader, marquee rendering and the animation thread, the console
 text (welcome header and help), the command interpreter, and the keyboard input
 loop.
 
-`ascii_big.txt` is the 8-row ASCII font the marquee is drawn with. It is read when
-the program starts, so it must sit either in the working directory or next to the
-built executable.
+`ascii_big.txt` is the 8-row ASCII font the marquee is drawn with, and
+`config.txt` holds the startup settings. Both are read when the program starts,
+so they must sit either in the working directory or next to the built
+executable.
 
 ## How to Run
 
@@ -46,9 +47,10 @@ such as MSVC or MinGW-w64 g++. No external libraries or build system are needed.
 ### Visual Studio (used for the demo video)
 
 1. Create an empty **C++ Console App** project and add `main.cpp` to it.
-2. Copy `ascii_big.txt` into the project folder (the folder containing the
-   `.vcxproj` file). That folder is the working directory Visual Studio uses when
-   you press Run/Debug.
+2. Copy `ascii_big.txt` and `config.txt` into the project folder (the folder
+   containing the `.vcxproj` file). That folder is the working directory Visual
+   Studio uses when you press Run/Debug, and the folder to edit `config.txt` in
+   between test cases.
 3. Press **Run/Debug**.
 
 ### Developer Command Prompt (MSVC)
@@ -65,8 +67,8 @@ g++ -std=c++17 -o marquee main.cpp
 marquee.exe
 ```
 
-Run the program from the folder that contains `ascii_big.txt`, or copy the font
-next to the executable. If the font cannot be found, the console prints a warning
+Run the program from the folder that contains `ascii_big.txt` and `config.txt`,
+or copy them next to the executable. If the font cannot be found, the console prints a warning
 and the marquee falls back to scrolling the text as a single plain row.
 
 Use a console window of at least 100 columns by about 20 rows (the Windows
@@ -92,6 +94,32 @@ cursor around each frame so typing is never interrupted.
 
 On exit the marquee rows are cleared and the scrolling region is reset, so the
 window behaves normally again.
+
+## Configuration (`config.txt`)
+
+`config.txt` is read once at startup, from the working directory or from the
+folder holding the executable. It is the only file meant to be edited between
+black-box test cases: change a value, save, run the program again. No rebuild
+is needed.
+
+| Setting | Meaning | Default | Run-time equivalent |
+|---|---|---|---|
+| `marquee-text` | The text the marquee scrolls. Optional double quotes are stripped, so leading and trailing spaces can be kept. | `Hello, World!` | `set_text` |
+| `refresh-rate` | Marquee animation refresh in milliseconds (whole number, 1 or more). | `100` | `set_speed` |
+| `polling-rate` | Keyboard polling interval in milliseconds (whole number, 1 to 1000). | `10` | `set_poll` |
+
+One `key value` pair per line; everything after a `#` is a comment; blank lines
+are ignored; `-` and `_` in a key are interchangeable. A missing file, an
+unknown key or an unusable value keeps the built-in default and prints a note.
+The settings in force are printed under the welcome header, so a recording
+shows which values the run actually used:
+
+```
+Version date: 2026-09-21
+Config: text "Hello, World!", refresh 100 ms, polling 10 ms
+```
+
+Both commands still work at run time and override the file for that run.
 
 ## Commands
 

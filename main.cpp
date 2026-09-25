@@ -9,6 +9,10 @@
 // transcript above those rows, so the marquee keeps animating while commands
 // are typed.
 //
+// config.txt is read once at startup for the marquee text, the refresh rate
+// and the keyboard polling rate. It is the only file that is meant to be
+// edited between black-box test cases; the program never has to be rebuilt.
+//
 // Two diagnostic commands, "stats" and "set_poll", expose the measured
 // refresh interval and keyboard polling behaviour for the technical report;
 // they are not part of the specification and are not listed by "help".
@@ -46,6 +50,7 @@ const long long MAX_POLL_MS = 1000;       // largest value set_poll accepts
 const int FALLBACK_WIDTH = 99;     // marquee width if the console size is unknown
 const int FALLBACK_ROWS = 30;      // window height if the console size is unknown
 const char FONT_FILE[] = "ascii_big.txt";
+const char CONFIG_FILE[] = "config.txt";
 const std::string PROMPT = "Command> ";
 
 // Characters treated as whitespace when trimming and splitting input.
@@ -164,6 +169,23 @@ std::string exe_directory() {
     return (slash == std::string::npos) ? "" : path.substr(0, slash + 1);
 }
 
+// Opens a data file from the working directory, or from the executable's
+// directory when it is not there, so the program works whether it is started
+// from an IDE or directly from its build folder.
+bool open_data_file(const std::string &name, std::ifstream &file) {
+    file.open(name.c_str());
+    if (file.is_open()) {
+        return true;
+    }
+    const std::string directory = exe_directory();
+    if (directory.empty()) {
+        return false;
+    }
+    file.clear();
+    file.open((directory + name).c_str());
+    return file.is_open();
+}
+
 // If the program is interrupted (Ctrl+C, closing the window), give the
 // console its normal full-screen scrolling back.
 BOOL WINAPI on_console_ctrl(DWORD) {
@@ -178,9 +200,9 @@ BOOL WINAPI on_console_ctrl(DWORD) {
 // Reads the font file: one 8-row block per printable character, starting at
 // '!' (ASCII 33) and continuing in ASCII order up to '~' (ASCII 126). Each
 // glyph is cropped to its real width plus one space of kerning.
-bool load_font_file(const std::string &path) {
-    std::ifstream file(path.c_str());
-    if (!file.is_open()) {
+bool load_font() {
+    std::ifstream file;
+    if (!open_data_file(FONT_FILE, file)) {
         return false;
     }
 
@@ -219,17 +241,6 @@ bool load_font_file(const std::string &path) {
     glyphs[' '] = std::vector<std::string>(MARQUEE_ROWS, "     ");
     font_map = glyphs;
     return true;
-}
-
-// Looks for the font in the current working directory first, then next to
-// the executable, so the program works whether it is started from an IDE or
-// directly from its build folder.
-bool load_font() {
-    if (load_font_file(FONT_FILE)) {
-        return true;
-    }
-    const std::string dir = exe_directory();
-    return !dir.empty() && load_font_file(dir + FONT_FILE);
 }
 
 // ---- Marquee rendering --------------------------------------------------
@@ -394,6 +405,89 @@ bool parse_milliseconds(const std::string &argument, long long maximum, int &mil
     milliseconds = static_cast<int>(value);
     return true;
 }
+
+// ---- config.txt ---------------------------------------------------------
+
+// Strips one pair of surrounding double quotes, so leading or trailing
+// spaces can be kept: set_text "  spaced  " style values.
+std::string unquote(const std::string &value) {
+    if (value.size() >= 2 && value[0] == '"' && value[value.size() - 1] == '"') {
+        return value.substr(1, value.size() - 2);
+    }
+    return value;
+}
+
+// Reads config.txt: one "key value" pair per line, "#" starts a comment,
+// blank lines are ignored and "-" and "_" in a key are interchangeable. A
+// missing file, an unknown key or an unusable value keeps the built-in
+// default and adds a note. The notes are printed under the welcome header so
+// the settings actually in force are visible on screen and on the video.
+// This runs before the marquee thread starts, so the shared state it writes
+// needs no lock.
+std::vector<std::string> load_config() {
+    std::vector<std::string> notes;
+    std::ifstream file;
+
+    if (!open_data_file(CONFIG_FILE, file)) {
+        notes.push_back(std::string("Config: ") + CONFIG_FILE + " was not found, using the defaults.");
+    }
+
+    std::string line;
+    while (std::getline(file, line)) { // an unopened file simply reads nothing
+        const std::string::size_type comment = line.find('#');
+        if (comment != std::string::npos) {
+            line.erase(comment);
+        }
+        const std::string entry = trim(line);
+        if (entry.empty()) {
+            continue;
+        }
+
+        const std::string::size_type separator = entry.find_first_of(WHITESPACE);
+        std::string key = (separator == std::string::npos) ? entry : entry.substr(0, separator);
+        const std::string value =
+            (separator == std::string::npos) ? "" : trim(entry.substr(separator + 1));
+        for (std::string::size_type i = 0; i < key.size(); ++i) {
+            if (key[i] == '_') {
+                key[i] = '-'; // refresh_rate and refresh-rate both work
+            }
+        }
+
+        int milliseconds = 0;
+        if (key == "marquee-text") {
+            if (value.empty()) {
+                notes.push_back("Config: marquee-text has no text, keeping \"" + marquee_text + "\".");
+            } else {
+                marquee_text = unquote(value);
+            }
+        } else if (key == "refresh-rate") {
+            if (parse_milliseconds(value, MAX_SPEED_MS, milliseconds)) {
+                speed_ms = milliseconds;
+            } else {
+                notes.push_back("Config: refresh-rate '" + value +
+                                "' is not a whole number of milliseconds greater than zero, keeping " +
+                                std::to_string(speed_ms.load()) + ".");
+            }
+        } else if (key == "polling-rate") {
+            if (parse_milliseconds(value, MAX_POLL_MS, milliseconds)) {
+                poll_ms = milliseconds;
+            } else {
+                notes.push_back("Config: polling-rate '" + value +
+                                "' is not a whole number of milliseconds from 1 to " +
+                                std::to_string(MAX_POLL_MS) + ", keeping " +
+                                std::to_string(poll_ms.load()) + ".");
+            }
+        } else {
+            notes.push_back("Config: unknown setting '" + key + "' ignored.");
+        }
+    }
+
+    notes.push_back("Config: text \"" + marquee_text + "\", refresh " + std::to_string(speed_ms.load()) +
+                    " ms, polling " + std::to_string(poll_ms.load()) + " ms");
+    return notes;
+}
+
+// ---- Diagnostics --------------------------------------------------------
 
 // The "stats" diagnostic: what was actually measured since the last reset.
 std::string stats_text() {
@@ -588,6 +682,7 @@ int main() {
     enable_virtual_terminal();
     SetConsoleCtrlHandler(on_console_ctrl, TRUE);
     font_loaded = load_font();
+    const std::vector<std::string> config_notes = load_config();
 
     // The transcript scrolls inside rows 1..region_bottom; the marquee owns
     // the bottom MARQUEE_ROWS rows, with one blank row between them.
@@ -605,6 +700,9 @@ int main() {
         const std::vector<std::string> header = header_lines();
         for (std::size_t i = 0; i < header.size(); ++i) {
             std::cout << header[i] << "\n";
+        }
+        for (std::size_t i = 0; i < config_notes.size(); ++i) {
+            std::cout << config_notes[i] << "\n";
         }
         std::cout.flush();
     }
