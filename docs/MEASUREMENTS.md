@@ -10,8 +10,8 @@ from.
 
 | Term | Meaning | Where it is set |
 |---|---|---|
-| Refresh rate | How often the marquee thread redraws the eight marquee rows: one frame every `speed_ms`. | `refresh-rate` in `config.txt` at startup, `set_speed <ms>` at run time (default 100) |
-| Polling rate | How often the console thread checks the keyboard with `_kbhit()`: once every `poll_ms`. | `polling-rate` in `config.txt` at startup, `set_poll <ms>` at run time (default 10) |
+| Refresh rate | How often the marquee thread redraws the eight marquee rows: one frame every `Marquee::refresh_ms_`. | `refresh-rate` in `config.txt` at startup, `set_speed <ms>` at run time (default 100) |
+| Polling rate | How often the console thread checks the keyboard with `_kbhit()`: once every `MarqueeConsole::polling_ms_`. | `polling-rate` in `config.txt` at startup, `set_poll <ms>` at run time (default 10) |
 
 Both are sleeps, so the operating system decides the real granularity. On Windows the
 default timer resolution is about 15.6 ms: a sleep of 1 or 10 ms really lasts about
@@ -179,17 +179,18 @@ What the numbers say on that machine:
 
 ## Technical report outline (order required by the specification)
 
-1. Command recognition — `read_command_line` (keyboard polling, Backspace, ignored
-   keys), `trim`, splitting into command and argument.
+1. Command recognition — `MarqueeConsole::read_command_line` (keyboard polling,
+   Backspace, ignored keys), `text::trim`, splitting into command and argument.
 2. Console UI implementation — the transcript region (`ESC[1;Nr`), the marquee rows,
-   `draw_marquee_frame` with cursor save/restore, the 8-row font loader.
-3. Command interpreter implementation — `process_command`: the six commands, the
-   validation in `parse_milliseconds`, every error message.
+   `Marquee::draw_frame` with cursor save/restore, the 8-row font loader (`AsciiFont`).
+3. Command interpreter implementation — `MarqueeConsole::execute`: the six commands,
+   the validation in `text::parse_milliseconds`, every error message.
 4. Process representation — two threads (console thread and marquee thread) sharing
-   `marquee_text`, `animation_on`, `speed_ms`, `poll_ms` and `program_running`; what is
-   under a mutex and what is atomic.
+   `Marquee`'s `text_` (mutex), `running_`, `refresh_ms_`, `frame_requested_` and
+   `alive_` (atomics), and the one `Console` mutex every write to `std::cout` takes;
+   `polling_ms_` belongs to the console thread alone.
 5. Scheduler implementation — the program only chooses sleep intervals
-   (`INPUT_POLL_MS` / `set_poll`, `MARQUEE_TICK_MS`, the frame deadline); the OS
+   (`polling_ms_` / `set_poll`, `TICK_MS` in `Marquee.cpp`, the frame deadline); the OS
    scheduler decides when the threads actually run (show measured vs. requested).
 6. Refresh vs. polling balance — Experiments A and B, recommended values, limits.
 7. Embedded demo MP4.

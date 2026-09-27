@@ -49,7 +49,7 @@ are needed.
   Visual Studio (used for the demo video)
   ---------------------------------------
     1. Create an empty C++ Console App project and add every file in src/
-       to it (8 .cpp files and their headers).
+       to it (9 .cpp files and 8 headers).
     2. Copy ascii_big.txt and config.txt into the project folder (the folder
        containing the .vcxproj file). That folder is the working directory
        Visual Studio uses when you press Run/Debug, and the folder to edit
@@ -59,7 +59,7 @@ are needed.
   Developer Command Prompt (MSVC)
   -------------------------------
     cl /EHsc /std:c++17 src\*.cpp /Fe:marquee.exe
-    main.exe
+    marquee.exe
 
   MinGW-w64 (g++)
   ---------------
@@ -71,7 +71,7 @@ or copy them next to the executable. If the font cannot be found, the console pr
 warning and the marquee falls back to scrolling the text as a single plain
 row.
 
-Use a console window of at least 100 columns by about 20 rows (the Windows
+Use a console window of at least 100 columns by 28 rows (the Windows
 default is 120 by 30): the marquee takes the bottom eight rows and the
 console transcript scrolls in the rows above them. The program needs Windows
 10 or later with the standard console, which understands the ANSI escape
