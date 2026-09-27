@@ -109,3 +109,4 @@ Config: text "Hello, World!", refresh 100 ms, polling 10 ms
 - [README.txt](README.txt) — full document: program structure, screen layout, every command, input handling
 - [docs/TESTING.md](docs/TESTING.md) — manual test script for the demo video
 - [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md) — refresh vs. polling rate procedure
+- [docs/COMPLIANCE.md](docs/COMPLIANCE.md) — review against the MO3 specification and the quiz test cases
